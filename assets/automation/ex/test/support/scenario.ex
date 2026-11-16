@@ -15,7 +15,7 @@ defmodule OliE2E.Scenario do
     # same-named scenarios race on the app's slug uniqueness (422 on
     # index_slug_sections), so seeds in this VM take turns.
     response =
-      :global.trans({:oli_e2e_seed, :lock}, fn ->
+      :global.trans({:oli_e2e_seed, self()}, fn ->
         APIRequestContext.post!(request, target_url,
           headers: %{"x-playwright-scenario-token" => token, "content-type" => "application/json"},
           data: %{yaml: yaml, params: params}
