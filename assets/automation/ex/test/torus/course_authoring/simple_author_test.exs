@@ -34,7 +34,7 @@ defmodule OliE2E.Torus.CourseAuthoring.SimpleAuthorTest do
 
   setup_all %{browser: browser} do
     base_url = Env.base_url()
-    run_id = "-#{System.os_time(:millisecond)}-#{System.pid()}"
+    run_id = OliE2E.Helpers.run_id()
     project_title = "Simple Author Suite#{run_id}"
 
     login_data = %{

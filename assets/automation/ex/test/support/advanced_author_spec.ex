@@ -21,7 +21,7 @@ defmodule OliE2E.AdvancedAuthorSpec do
   # same moment, and the app slugifies the project title cut to 30 chars (the run
   # id's first digits only): the per-module number comes first so slugs differ
   # (else a concurrent insert fails on the `index_slug_families` unique constraint).
-  def run_id, do: "-#{:rand.uniform(1000)}#{System.unique_integer([:positive])}-#{System.os_time(:millisecond)}-#{System.pid()}"
+  def run_id, do: OliE2E.Helpers.run_id()
 
   def project_title(run_id), do: "Advanced Author Suite#{run_id}"
 
