@@ -190,7 +190,7 @@ jobs:
             assets/automation/ex/deps
             assets/automation/ex/_build
             ~/.cache/playwright
-          key: ${{ runner.os }}-pwex-1.65.0-rc.1-${{ hashFiles('assets/automation/ex/mix.exs', 'assets/automation/ex/mix.lock') }}
+          key: ${{ runner.os }}-pwex-main-0217c34-${{ hashFiles('assets/automation/ex/mix.exs', 'assets/automation/ex/mix.lock') }}
 
       - name: Install playwright_ex and Chrome
         working-directory: assets/automation/ex
@@ -198,7 +198,7 @@ jobs:
           MIX_ENV: test
         run: |
           mix deps.get
-          mix do compile + playwright.install -- chrome --with-deps
+          mix do compile + playwright.install chrome --with-deps
 
       - name: Start Torus (MIX_ENV=playwright)
         run: |
