@@ -74,14 +74,7 @@ defmodule OliE2E.Torus.CourseAuthoring.SimpleAuthorTest do
     # The PR job runs against an ephemeral database, so the JS teardown only runs when an
     # automation API key is available (local runs and persistent deployments): omitted here.
 
-    # A context of its own: no fixture defaults, so the options are explicit and the captcha
-    # init script is added by hand.
-    context =
-      Browser.new_context!(browser,
-        base_url: base_url,
-        ignore_https_errors: true,
-        viewport: %{width: 1920, height: 1080}
-      )
+    context = Browser.new_context!(browser)
 
     OliE2E.Captcha.configure(context, base_url)
     page = BrowserContext.new_page!(context)

@@ -36,11 +36,7 @@ defmodule OliE2E.Torus.CourseAuthoring.AdvancedAuthorTest do
     base_url = OliE2E.Env.base_url()
 
     context =
-      Browser.new_context!(browser,
-        base_url: base_url,
-        ignore_https_errors: true,
-        viewport: %{width: 1920, height: 1080}
-      )
+      Browser.new_context!(browser)
 
     on_exit(fn -> BrowserContext.close(context) end)
     OliE2E.Captcha.configure(context, base_url)

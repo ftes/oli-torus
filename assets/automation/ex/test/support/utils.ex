@@ -70,39 +70,4 @@ defmodule OliE2E.Utils do
         IO.puts("Element: #{modal_class}. Restart page to remove modal shadow")
     end
   end
-
-  @doc """
-  `Promise.race([...])`: runs each zero-arity function in its own promise and returns the
-  value (or raises the error) of the first to settle. The slower ones are dropped.
-  """
-  def promise_race(funs) do
-    owner = self()
-    ref = make_ref()
-
-    promises =
-      Enum.map(funs, fn fun ->
-        Playwright.Promise.async(fn ->
-          result =
-            try do
-              {:ok, fun.()}
-            rescue
-              e -> {:error, e}
-            end
-
-          send(owner, {ref, result})
-        end)
-      end)
-
-    result =
-      receive do
-        {^ref, result} -> result
-      end
-
-    Enum.each(promises, &Playwright.Promise.free/1)
-
-    case result do
-      {:ok, value} -> value
-      {:error, error} -> raise error
-    end
-  end
 end

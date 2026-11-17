@@ -66,8 +66,7 @@ defmodule OliE2E.AdvancedAuthorSpec do
   """
   def seed(browser, spec_dir, run_id) do
     playwright = BrowserPool.playwright(browser)
-    base_url = OliE2E.Env.base_url()
-    request = APIRequest.new_context!(Playwright.request(playwright), base_url: base_url, ignore_https_errors: true)
+    request = APIRequest.new_context!(Playwright.request(playwright))
 
     try do
       result =

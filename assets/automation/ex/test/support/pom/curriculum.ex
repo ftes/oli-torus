@@ -5,8 +5,8 @@ defmodule OliE2E.Pom.Curriculum do
   integer.
   """
 
-  alias OliE2E.{Utils, Verifier, Waiter}
-  alias Playwright.{Locator, Page}
+  alias OliE2E.{Verifier, Waiter}
+  alias Playwright.{Locator, Page, Promise}
 
   defstruct [
     :page,
@@ -61,10 +61,11 @@ defmodule OliE2E.Pom.Curriculum do
     editor_title_bar = Page.locator(po.page, "div.TitleBar")
 
     try do
-      Utils.promise_race([
-        fn -> Page.wait_for_url!(po.page, ~r{/curriculum/[^/]+/edit$}, timeout: 10_000) end,
-        fn -> Locator.wait_for!(editor_title_bar, state: :visible, timeout: 10_000) end
+      Promise.race([
+        Promise.async(fn -> Page.wait_for_url!(po.page, ~r{/curriculum/[^/]+/edit$}, timeout: 10_000) end),
+        Promise.async(fn -> Locator.wait_for!(editor_title_bar, state: :visible, timeout: 10_000) end)
       ])
+      |> Promise.await!()
 
       true
     rescue

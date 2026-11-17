@@ -45,10 +45,7 @@ defmodule OliE2E.Case do
 
   @doc "The `request` fixture: an API request context (use it in `setup_all` too, and dispose it there)."
   def api_request(browser) do
-    APIRequest.new_context!(Playwright.request(BrowserPool.playwright(browser)),
-      base_url: Env.base_url(),
-      ignore_https_errors: true
-    )
+    APIRequest.new_context!(Playwright.request(BrowserPool.playwright(browser)))
   end
 
   @doc """

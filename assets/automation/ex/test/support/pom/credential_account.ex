@@ -24,10 +24,11 @@ defmodule OliE2E.Pom.CredentialAccount do
 
     accept_cookie_consent_if_visible(po)
 
-    OliE2E.Helpers.promise_all([
-      fn -> Page.wait_for_url!(page, "/#{path_segment(po)}/confirm", wait_until: :commit) end,
-      fn -> form |> Locator.get_by_role(:button, name: "Create account", exact: true) |> Locator.click!() end
+    Promise.all([
+      Promise.async(fn -> Page.wait_for_url!(page, "/#{path_segment(po)}/confirm", wait_until: :commit) end),
+      Promise.async(fn -> form |> Locator.get_by_role(:button, name: "Create account", exact: true) |> Locator.click!() end)
     ])
+    |> Promise.await!()
 
     # The confirm-instructions LiveView must finish joining before the
     # session cookie is cleared (clear_session_cookie, called by the caller
@@ -43,10 +44,11 @@ defmodule OliE2E.Pom.CredentialAccount do
     wait_for_live_view_ready(po)
     accept_cookie_consent_if_visible(po)
 
-    OliE2E.Helpers.promise_all([
-      fn -> Page.wait_for_url!(page, "/#{path_segment(po)}/log_in", wait_until: :commit) end,
-      fn -> page |> Page.get_by_role(:button, name: "Confirm", exact: true) |> Locator.click!() end
+    Promise.all([
+      Promise.async(fn -> Page.wait_for_url!(page, "/#{path_segment(po)}/log_in", wait_until: :commit) end),
+      Promise.async(fn -> page |> Page.get_by_role(:button, name: "Confirm", exact: true) |> Locator.click!() end)
     ])
+    |> Promise.await!()
 
     page |> Page.get_by_text("Email successfully confirmed.") |> Expect.to_be_visible!()
   end
@@ -59,14 +61,15 @@ defmodule OliE2E.Pom.CredentialAccount do
     form |> Locator.locator(~s|input[name="#{form_name(po)}[email]"]|) |> Locator.fill!(email)
     accept_cookie_consent_if_visible(po)
 
-    OliE2E.Helpers.promise_all([
-      fn -> Page.wait_for_url!(page, reset_request_destination(po)) end,
-      fn ->
+    Promise.all([
+      Promise.async(fn -> Page.wait_for_url!(page, reset_request_destination(po)) end),
+      Promise.async(fn ->
         form
         |> Locator.get_by_role(:button, name: "Send password reset instructions")
         |> Locator.click!()
-      end
+      end)
     ])
+    |> Promise.await!()
   end
 
   def reset_password(%{page: page} = po, url, password) do
@@ -79,12 +82,13 @@ defmodule OliE2E.Pom.CredentialAccount do
     form |> Locator.locator(~s|input[name="#{name}[password_confirmation]"]|) |> Locator.fill!(password)
     accept_cookie_consent_if_visible(po)
 
-    OliE2E.Helpers.promise_all([
-      fn -> Page.wait_for_url!(page, "/#{path_segment(po)}/log_in", wait_until: :commit) end,
-      fn ->
+    Promise.all([
+      Promise.async(fn -> Page.wait_for_url!(page, "/#{path_segment(po)}/log_in", wait_until: :commit) end),
+      Promise.async(fn ->
         form |> Locator.get_by_role(:button, name: "Reset Password", exact: true) |> Locator.click!()
-      end
+      end)
     ])
+    |> Promise.await!()
 
     page |> Page.get_by_text("Password reset successfully.") |> Expect.to_be_visible!()
   end

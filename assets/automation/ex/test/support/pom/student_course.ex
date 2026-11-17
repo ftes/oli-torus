@@ -5,8 +5,8 @@ defmodule OliE2E.Pom.StudentCourse do
   `isVisible({timeout})` is called without the timeout (JS ignores it).
   """
 
-  alias OliE2E.{Helpers, Utils, Verifier}
-  alias Playwright.{Expect, Locator, Page}
+  alias OliE2E.Verifier
+  alias Playwright.{Expect, Locator, Page, Promise}
 
   defstruct [:page, :course_home_markers, :view_selector, :onboarding_wizard]
 
@@ -110,10 +110,11 @@ defmodule OliE2E.Pom.StudentCourse do
 
   # `Promise.all([page.waitForURL(isStudentLessonPath, {timeout: 15000}), click])`
   defp click_and_wait_for_lesson(page, click) do
-    Helpers.promise_all([
-      fn -> Page.wait_for_url!(page, fn url -> student_lesson_path?(url.path) end, timeout: 15_000) end,
-      click
+    Promise.all([
+      Promise.async(fn -> Page.wait_for_url!(page, fn url -> student_lesson_path?(url.path) end, timeout: 15_000) end),
+      Promise.async(click)
     ])
+    |> Promise.await!()
   end
 
   # The title of an opened page. Basic pages render it as a heading. The adaptive
@@ -191,16 +192,17 @@ defmodule OliE2E.Pom.StudentCourse do
     if match?({:ok, true}, Locator.is_visible(enroll_button)) do
       current_url = Page.url(page)
 
-      Helpers.promise_all([
-        fn ->
+      Promise.all([
+        Promise.async(fn ->
           try do
             Page.wait_for_url!(page, fn url -> URI.to_string(url) != current_url end, timeout: 15_000)
           rescue
             _ -> nil
           end
-        end,
-        fn -> Locator.click!(enroll_button) end
+        end),
+        Promise.async(fn -> Locator.click!(enroll_button) end)
       ])
+      |> Promise.await!()
 
       recaptcha_error = Page.get_by_text(page, ~r/ReCaptcha failed|reCAPTCHA failed/i)
 
@@ -226,15 +228,16 @@ defmodule OliE2E.Pom.StudentCourse do
 
   defp wait_for_course_home(%{page: page} = po, timeout) do
     reached =
-      Utils.promise_race([
-        fn ->
+      Promise.race([
+        Promise.async(fn ->
           match?(
             :ok,
             Page.wait_for_url(page, fn url -> not String.ends_with?(url.path || "", "/welcome") end, timeout: timeout)
           )
-        end,
-        fn -> course_home_is_visible(po, timeout) end
+        end),
+        Promise.async(fn -> course_home_is_visible(po, timeout) end)
       ])
+      |> Promise.await!()
 
     if reached, do: course_home_is_visible(po, timeout), else: false
   end
