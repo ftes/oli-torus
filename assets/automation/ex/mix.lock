@@ -1,3 +1,3 @@
 %{
-  "playwright": {:git, "https://github.com/ftes/playwright_ex.git", "5fe2de9880c7b7b7b53c947e4ed18ca21d3512cc", [ref: "5fe2de9880c7b7b7b53c947e4ed18ca21d3512cc"]},
+  "playwright": {:hex, :playwright_ex, "1.65.0-rc.2", "bdc53b1858b122d23e736f28b6ce4aa9d1fd2913abfad629de954f46abaee35b", [:mix], [], "hexpm", "916c76ab916de05ce06a2a2eb072ce80581e3685597d8dd8377200be860f6000"},
 }

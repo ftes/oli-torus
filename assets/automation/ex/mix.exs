@@ -14,6 +14,6 @@ defmodule OliE2E.MixProject do
   def application, do: [extra_applications: [:logger]]
 
   defp deps do
-    [{:playwright, github: "ftes/playwright_ex", ref: "5fe2de9880c7b7b7b53c947e4ed18ca21d3512cc"}]
+    [{:playwright, "~> 1.65.0-rc.2", hex: :playwright_ex}]
   end
 end
