@@ -178,13 +178,27 @@ jobs:
       - name: Build Tailwind and digested assets
         run: mix assets.deploy
 
-      - name: Install Playwright dependencies
+      # @axe-core/playwright's axe-core is read by the ported AxeBuilder.
+      - name: Install axe-core
         working-directory: assets/automation
         run: npm ci
 
-      - name: Install Playwright browsers
-        working-directory: assets/automation
-        run: npx playwright install --with-deps chrome
+      - name: Cache playwright_ex e2e project
+        uses: actions/cache@v3
+        with:
+          path: |
+            assets/automation/ex/deps
+            assets/automation/ex/_build
+            ~/.cache/playwright
+          key: ${{ runner.os }}-pwex-main-0217c34-${{ hashFiles('assets/automation/ex/mix.exs', 'assets/automation/ex/mix.lock') }}
+
+      - name: Install playwright_ex and Chrome
+        working-directory: assets/automation/ex
+        env:
+          MIX_ENV: test
+        run: |
+          mix deps.get
+          mix do compile + playwright.install chrome --with-deps
 
       - name: Start Torus (MIX_ENV=playwright)
         run: |
@@ -204,18 +218,22 @@ jobs:
           cat /tmp/torus-server.log
           exit 1
 
-      # Spec files run in parallel across workers; tests within a file stay
-      # serial because playwright.config.ts keeps fullyParallel off.
-      - name: Run @pr-tagged Playwright tests
-        working-directory: assets/automation
-        run: npx playwright test --grep @pr --reporter=line,html --workers=2
+      # Modules run in parallel across 2 workers (config :playwright, :test,
+      # workers); tests within a module stay serial. One retry of failures,
+      # as retries: 1 in playwright.config.ts.
+      - name: Run the ported @pr Playwright tests
+        working-directory: assets/automation/ex
+        env:
+          MIX_ENV: test
+        run: |
+          mix test --seed 0 || { [ $? -eq 2 ] && mix test --seed 0 --failed; }
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: pr-playwright-report
-          path: assets/automation/playwright-report/
+          path: assets/automation/ex/test-results/
           retention-days: 14
 
       - name: Upload Playwright test results
@@ -223,7 +241,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pr-playwright-test-results
-          path: assets/automation/test-results/
+          path: assets/automation/ex/test-results/
           retention-days: 14
 
       # Raw request logs contain confirmation/reset URL credentials. Keep them
