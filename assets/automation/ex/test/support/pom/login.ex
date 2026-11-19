@@ -34,7 +34,8 @@ defmodule OliE2E.Pom.Login do
     Waiter.wait_for(po.accept_cookies_button, :visible)
     Locator.click!(po.accept_cookies_button)
   rescue
-    _ -> IO.puts("Waiting for cookie modal and it doesn't appear")
+    # JS logs that the cookie modal didn't appear (`console.log`).
+    _ -> :ok
   end
 
   def verify_title(po, expected_title), do: Verifier.expect_title(po.page, expected_title)

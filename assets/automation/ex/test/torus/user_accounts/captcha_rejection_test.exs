@@ -2,12 +2,11 @@ defmodule OliE2E.Torus.UserAccounts.CaptchaRejectionTest do
   # registration captcha authorization @pr
   use OliE2E.Case, async: true
 
-  @moduletag :pr
+  alias Playwright.{Locator, Page}
 
+  @moduletag :pr
   # imports `test` from '@playwright/test', not the my-fixture one
   @moduletag plain: true
-
-  alias Playwright.{Locator, Page}
 
   for type <- ["user", "author"], credential <- ["missing", "incorrect"] do
     test "#{type} registration rejects a #{credential} credential", %{

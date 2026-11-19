@@ -4,7 +4,7 @@ defmodule OliE2E.Tasks.Project do
   `create_new_project` and `publish_project` are ported (what the @pr specs use).
   """
 
-  import OliE2E.Helpers, only: [step: 2]
+  require Playwright.Test
 
   alias OliE2E.Utils
   alias OliE2E.Pom.{AuthorDashboard, OverviewProject, PublishProject}
@@ -22,7 +22,7 @@ defmodule OliE2E.Tasks.Project do
   end
 
   def search_and_enter_project(po, project_name) do
-    step "Search and enter the project '#{project_name}'" do
+    Playwright.Test.step "Search and enter the project '#{project_name}'" do
       AuthorDashboard.search_project(po.author_db, project_name)
       AuthorDashboard.click_project_link(po.author_db, project_name)
       OverviewProject.wait_for_editor_ready(po.overview_p)
@@ -30,7 +30,7 @@ defmodule OliE2E.Tasks.Project do
   end
 
   def create_new_project(po, project_name) do
-    step "Create a new project '#{project_name}'" do
+    Playwright.Test.step "Create a new project '#{project_name}'" do
       AuthorDashboard.click_new_project_button(po.author_db)
       AuthorDashboard.fill_project_name(po.author_db, project_name)
       AuthorDashboard.click_create_button(po.author_db)
@@ -42,7 +42,7 @@ defmodule OliE2E.Tasks.Project do
   end
 
   def publish_project(po, description \\ nil) do
-    step "Publish project" do
+    Playwright.Test.step "Publish project" do
       try do
         PublishProject.fill_description(po.publish_p, description || "Automated publish")
       rescue

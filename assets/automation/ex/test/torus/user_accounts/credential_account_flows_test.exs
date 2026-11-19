@@ -2,12 +2,14 @@ defmodule OliE2E.Torus.UserAccounts.CredentialAccountFlowsTest do
   # credential-based account flows @pr
   use OliE2E.Case, async: true
 
-  @moduletag :pr
-
   alias OliE2E.Mailbox
   alias OliE2E.Pom.CredentialAccount
 
+  @moduletag :pr
   @moduletag timeout: 120_000
+
+  # The `request` fixture.
+  setup %{browser: browser}, do: %{request: api_request(browser)}
 
   test "author self-service lifecycle", %{context: context, page: page, request: request} do
     exercise_self_service_lifecycle(:author, context, page, request)

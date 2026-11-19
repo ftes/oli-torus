@@ -5,8 +5,10 @@ defmodule OliE2E.Torus.CourseAuthoring.SimpleAuthorTest do
   # skip a login and an editor load each. Every case still reloads the editor to
   # prove its configuration persisted.
   #
-  # The cases don't depend on each other's results, so they stay separate tests. The
-  # second describe of simple-author.spec.ts ('Simple Author lesson delivery') is in
+  # A test.describe.serial: one test here, the `beforeAll` then a step per JS test, in
+  # order and stopping at the first failure, so a rerun (`mix test --failed`) repeats
+  # the group from its `beforeAll`, as a JS retry does. The second describe of
+  # simple-author.spec.ts ('Simple Author lesson delivery') is in
   # simple_author_delivery_test.exs, seeding a scenario copy of its own.
   use OliE2E.Case, async: true
 
@@ -15,10 +17,9 @@ defmodule OliE2E.Torus.CourseAuthoring.SimpleAuthorTest do
   alias OliE2E.Tasks.{Home, SimpleAuthor}
 
   @moduletag :pr
-  # test.beforeAll uses test.setTimeout(180_000).
-  @moduletag timeout: 180_000
-  # The tests work on the setup_all page: the per-test page skips the site navigation.
-  @moduletag site: false
+  # The test's page is the `beforeAll` page (`browser.newContext()`): no captcha, and
+  # the test opens the site itself.
+  @moduletag plain: true
 
   # One row per Phase 1 component. Each row authors the component on its own
   # screen, reloads the editor once every write settled, and checks that the
@@ -34,124 +35,111 @@ defmodule OliE2E.Torus.CourseAuthoring.SimpleAuthorTest do
 
   setup_all %{browser: browser} do
     run_id = Spec.run_id()
-    login_data = Spec.login_data(run_id)
     _section_slug = Spec.seed(browser, __DIR__, run_id)
+    %{run_id: run_id, base_url: Env.base_url()}
+  end
 
-    context = Browser.new_context!(browser)
-    on_exit(fn -> BrowserContext.close(context) end)
+  # The beforeAll's test.setTimeout(180_000), 120_000 per case, 150_000 for copy/paste.
+  @tag timeout: 180_000 + length(@component_cases) * 120_000 + 150_000
+  test "Simple Author components", %{page: page, run_id: run_id, base_url: base_url} do
+    login_data = Spec.login_data(run_id)
 
-    page = BrowserContext.new_page!(context)
+    # test.beforeAll
     home_task = Home.new(page, login_data)
     Home.go_to_site(home_task, "/")
     Home.login(home_task, :author)
-    simple_author_task = SimpleAuthor.new(page, login_data)
+    task = SimpleAuthor.new(page, login_data)
+    SimpleAuthor.create_lesson(task, Spec.project_title(run_id), "Simple Author Components")
+    Editor.switch_to_screen_panel(task.editor)
 
-    SimpleAuthor.create_lesson(
-      simple_author_task,
-      Spec.project_title(run_id),
-      "Simple Author Components"
-    )
+    for {name, screen_type} <- @component_cases do
+      Test.step "#{name} keeps its configuration after save and refresh" do
+        screen_title = "#{name} screen"
+        editor = task.editor
 
-    Editor.switch_to_screen_panel(simple_author_task.editor)
+        SimpleAuthor.add_screen(task, screen_title, screen_type)
+        configure(name, editor, base_url)
 
-    %{simple_author_task: simple_author_task, base_url: Env.base_url()}
-  end
-
-  for {name, screen_type} <- @component_cases do
-    @tag timeout: 120_000
-    test "#{name} keeps its configuration after save and refresh", %{
-      simple_author_task: task,
-      base_url: base_url
-    } do
-      name = unquote(name)
-      screen_title = "#{name} screen"
-      editor = task.editor
-
-      SimpleAuthor.add_screen(task, screen_title, unquote(screen_type))
-      configure(name, editor, base_url)
-
-      SimpleAuthor.reload_and_open_screen(task, screen_title)
-      verify_persisted(name, editor, base_url)
+        SimpleAuthor.reload_and_open_screen(task, screen_title)
+        verify_persisted(name, editor, base_url)
+      end
     end
-  end
 
-  @tag timeout: 150_000
-  test "copy/paste and undo/redo update the screen and respect question limits", %{
-    simple_author_task: task
-  } do
-    editor = task.editor
-    text_flows = Editor.parts_of_type(editor, "janus-text-flow")
+    Test.step "copy/paste and undo/redo update the screen and respect question limits" do
+      editor = task.editor
+      text_flows = Editor.parts_of_type(editor, "janus-text-flow")
 
-    SimpleAuthor.add_screen(task, "Copy paste screen", "Instructional Screen")
-    Expect.to_have_count!(text_flows, 3)
+      SimpleAuthor.add_screen(task, "Copy paste screen", "Instructional Screen")
+      Expect.to_have_count!(text_flows, 3)
 
-    Editor.select_part(editor, "para-1")
-    Editor.copy_selected_part(editor)
-    Editor.paste_with_toolbar(editor)
+      Editor.select_part(editor, "para-1")
+      Editor.copy_selected_part(editor)
+      Editor.paste_with_toolbar(editor)
 
-    Expect.to_have_count!(text_flows, 4)
+      Expect.to_have_count!(text_flows, 4)
 
-    pasted_id =
+      pasted_id =
+        editor
+        |> Editor.part_ids("janus-text-flow")
+        |> Enum.find(fn id -> id not in ["header-1", "para-1", "para-2"] end)
+
+      if !pasted_id, do: raise("The pasted text flow should be on the stage")
+      assert pasted_id =~ ~r/^janus-text-flow-\d+$/
+      pasted = Editor.part(editor, pasted_id)
+
+      Expect.to_contain_text!(
+        pasted,
+        editor
+        |> Editor.part("para-1")
+        |> Locator.inner_text!()
+        |> String.trim()
+        |> String.slice(0, 40)
+      )
+
+      # The clipboard is single-use, so a second paste adds nothing.
+      Expect.to_be_hidden!(Editor.paste_button(editor))
+      Editor.paste_with_keyboard(editor, "para-2")
+      Editor.wait_for_saves(editor)
+      Expect.to_have_count!(text_flows, 4)
+
+      editor |> Editor.undo_button() |> Locator.click!()
+      Expect.to_have_count!(pasted, 0)
+      Expect.to_have_count!(text_flows, 3)
+      editor |> Editor.redo_button() |> Locator.click!()
+      Expect.to_have_count!(pasted, 1)
+
+      SimpleAuthor.reload_and_open_screen(task, "Copy paste screen")
+      Expect.to_have_count!(pasted, 1)
+      Expect.to_have_count!(text_flows, 4)
+
+      # A screen keeps a single question component, even through paste.
+      SimpleAuthor.add_screen(task, "Paste limits screen", "Multiple Choice")
+      Editor.select_part(editor, "question-1")
+      Editor.copy_selected_part(editor)
+      Expect.to_be_disabled!(Editor.paste_button(editor))
+      Editor.paste_with_keyboard(editor, "question-1")
+
+      Expect.to_contain_text!(
+        Editor.paste_blocked_modal(editor),
+        "Only one question component per screen is allowed"
+      )
+
       editor
-      |> Editor.part_ids("janus-text-flow")
-      |> Enum.find(fn id -> id not in ["header-1", "para-1", "para-2"] end)
+      |> Editor.paste_blocked_modal()
+      |> Locator.get_by_role(:button, name: "Close")
+      |> Locator.first()
+      |> Locator.click!()
 
-    if !pasted_id, do: raise("The pasted text flow should be on the stage")
-    assert pasted_id =~ ~r/^janus-text-flow-\d+$/
-    pasted = Editor.part(editor, pasted_id)
+      Expect.to_be_hidden!(Editor.paste_blocked_modal(editor))
+      Expect.to_have_count!(Editor.parts_of_type(editor, "janus-mcq"), 1)
 
-    Expect.to_contain_text!(
-      pasted,
-      editor
-      |> Editor.part("para-1")
-      |> Locator.inner_text!()
-      |> String.trim()
-      |> String.slice(0, 40)
-    )
-
-    # The clipboard is single-use, so a second paste adds nothing.
-    Expect.to_be_hidden!(Editor.paste_button(editor))
-    Editor.paste_with_keyboard(editor, "para-2")
-    Editor.wait_for_saves(editor)
-    Expect.to_have_count!(text_flows, 4)
-
-    editor |> Editor.undo_button() |> Locator.click!()
-    Expect.to_have_count!(pasted, 0)
-    Expect.to_have_count!(text_flows, 3)
-    editor |> Editor.redo_button() |> Locator.click!()
-    Expect.to_have_count!(pasted, 1)
-
-    SimpleAuthor.reload_and_open_screen(task, "Copy paste screen")
-    Expect.to_have_count!(pasted, 1)
-    Expect.to_have_count!(text_flows, 4)
-
-    # A screen keeps a single question component, even through paste.
-    SimpleAuthor.add_screen(task, "Paste limits screen", "Multiple Choice")
-    Editor.select_part(editor, "question-1")
-    Editor.copy_selected_part(editor)
-    Expect.to_be_disabled!(Editor.paste_button(editor))
-    Editor.paste_with_keyboard(editor, "question-1")
-
-    Expect.to_contain_text!(
-      Editor.paste_blocked_modal(editor),
-      "Only one question component per screen is allowed"
-    )
-
-    editor
-    |> Editor.paste_blocked_modal()
-    |> Locator.get_by_role(:button, name: "Close")
-    |> Locator.first()
-    |> Locator.click!()
-
-    Expect.to_be_hidden!(Editor.paste_blocked_modal(editor))
-    Expect.to_have_count!(Editor.parts_of_type(editor, "janus-mcq"), 1)
-
-    # Static components can still be pasted next to the question.
-    Editor.select_part(editor, "para-1")
-    Editor.copy_selected_part(editor)
-    Editor.paste_with_toolbar(editor)
-    Expect.to_have_count!(text_flows, 4)
-    Expect.to_have_count!(Editor.parts_of_type(editor, "janus-mcq"), 1)
+      # Static components can still be pasted next to the question.
+      Editor.select_part(editor, "para-1")
+      Editor.copy_selected_part(editor)
+      Editor.paste_with_toolbar(editor)
+      Expect.to_have_count!(text_flows, 4)
+      Expect.to_have_count!(Editor.parts_of_type(editor, "janus-mcq"), 1)
+    end
   end
 
   # ------------------------------------------------------------ component cases

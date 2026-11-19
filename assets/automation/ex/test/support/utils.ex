@@ -33,10 +33,6 @@ defmodule OliE2E.Utils do
     end)
   end
 
-  def scroll_to_bottom(%{page: page}) do
-    Page.evaluate!(page, "() => { scrollTo(0, document.body.scrollHeight); }")
-  end
-
   def paint_element(_utils, locator) do
     Locator.evaluate!(locator, """
     (lo) => {
@@ -47,18 +43,6 @@ defmodule OliE2E.Utils do
   end
 
   def sleep(_utils, seconds \\ 1), do: Process.sleep(round(seconds * 1000))
-
-  def wait_for_loading_bar(%{page: page}) do
-    connected = "div.phx-connected"
-    loading = "div.phx-loading"
-
-    Waiter.wait_for_load_state(page)
-
-    div_loading = page |> Page.locator(loading) |> Locator.all!()
-    div_connected = Page.locator(page, connected)
-
-    Verifier.expect_to_have_count(div_connected, length(div_loading))
-  end
 
   def write_with_delay(_utils, search_input, text, delay \\ 100) do
     Locator.press_sequentially!(search_input, text, delay: delay)
@@ -72,8 +56,8 @@ defmodule OliE2E.Utils do
       Waiter.wait_for(modal_backdrop, :hidden)
     rescue
       _ ->
+        # JS also logs the reload (`console.log`).
         Page.reload!(page)
-        IO.puts("Element: #{modal_class}. Restart page to remove modal shadow")
     end
   end
 end

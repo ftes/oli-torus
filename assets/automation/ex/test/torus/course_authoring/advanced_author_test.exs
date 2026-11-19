@@ -5,8 +5,9 @@ defmodule OliE2E.Torus.CourseAuthoring.AdvancedAuthorTest do
   # skip a login and an editor load each. Every case still reloads the editor to
   # prove its configuration persisted.
   #
-  # The cases don't depend on each other's results, so they stay separate tests.
-  # Each describe block of the JS spec is its own module, seeding its own copy
+  # A test.describe.serial: one test here, the `beforeAll` then a step per JS test, in
+  # order and stopping at the first failure, so a rerun (`mix test --failed`) repeats
+  # the group from its `beforeAll`, as a JS retry does. Each describe block of the JS spec is its own module, seeding its own copy
   # of the scenario (own run id). The JS `afterAll` teardown only runs with
   # PLAYWRIGHT_AUTOMATION_API_KEY (never in CI): omitted.
   use OliE2E.Case, async: true
@@ -16,10 +17,9 @@ defmodule OliE2E.Torus.CourseAuthoring.AdvancedAuthorTest do
   alias OliE2E.Tasks.{AdvancedAuthor, Home}
 
   @moduletag :pr
-  # test.beforeAll uses test.setTimeout(180_000).
-  @moduletag timeout: 180_000
-  # The tests work on the setup_all page: the per-test page skips the site navigation.
-  @moduletag site: false
+  # The test's page is the `beforeAll` page (`browser.newContext()`): no captcha, and
+  # the test opens the site itself.
+  @moduletag plain: true
 
   @component_cases [
     "static text",
@@ -32,111 +32,106 @@ defmodule OliE2E.Torus.CourseAuthoring.AdvancedAuthorTest do
 
   setup_all %{browser: browser} do
     run_id = Spec.run_id()
-    project_title = Spec.project_title(run_id)
-    login_data = Spec.login_data(run_id)
     _section_slug = Spec.seed(browser, __DIR__, run_id)
+    %{run_id: run_id}
+  end
 
-    context = Browser.new_context!(browser)
-    on_exit(fn -> BrowserContext.close(context) end)
+  # The beforeAll's test.setTimeout(180_000), 120_000 per case, 150_000 for each of the
+  # last two.
+  @tag timeout: 180_000 + length(@component_cases) * 120_000 + 2 * 150_000
+  test "Advanced Author components", %{page: page, run_id: run_id} do
+    login_data = Spec.login_data(run_id)
 
-    page = BrowserContext.new_page!(context)
+    # test.beforeAll
     home_task = Home.new(page, login_data)
     Home.go_to_site(home_task, "/")
     Home.login(home_task, :author)
-    advanced_author_task = AdvancedAuthor.new(page, login_data)
+    task = AdvancedAuthor.new(page, login_data)
+    AdvancedAuthor.create_lesson(task, Spec.project_title(run_id), "Advanced Author Components")
 
-    AdvancedAuthor.create_lesson(
-      advanced_author_task,
-      project_title,
-      "Advanced Author Components"
-    )
+    for component_case <- @component_cases do
+      Test.step "#{component_case} keeps its configuration after save and refresh" do
+        screen_title = "#{component_case} screen"
+        editor = task.editor
 
-    %{advanced_author_task: advanced_author_task}
-  end
+        AdvancedAuthor.add_screen(task, screen_title)
+        configure(component_case, editor)
 
-  for component_case <- @component_cases do
-    @tag timeout: 120_000
-    test "#{component_case} keeps its configuration after save and refresh", %{
-      advanced_author_task: task
-    } do
-      screen_title = "#{unquote(component_case)} screen"
+        AdvancedAuthor.reload_and_open_screen(task, screen_title)
+        verify_persisted(component_case, editor)
+      end
+    end
+
+    Test.step "copy/paste and undo/redo update the screen" do
+      editor = task.editor
+      text_flows = Editor.parts_of_type(editor, "janus-text-flow")
+      copy_text = "Original text to copy"
+
+      AdvancedAuthor.add_screen(task, "Copy paste screen")
+      part_id = Editor.add_component(editor, :janus_text_flow)
+      Editor.set_text_flow_text(editor, part_id, copy_text)
+      before_ids = Editor.part_ids(editor, "janus-text-flow")
+
+      Editor.select_part(editor, part_id)
+      Editor.copy_selected_part(editor)
+      Editor.paste_with_toolbar(editor)
+
+      Expect.to_have_count!(text_flows, length(before_ids) + 1)
+      after_paste_ids = Editor.part_ids(editor, "janus-text-flow")
+      pasted_id = Enum.find(after_paste_ids, fn id -> id not in before_ids end)
+      if !pasted_id, do: raise("The pasted text flow should be on the stage")
+      pasted = Editor.part(editor, pasted_id)
+      Expect.to_contain_text!(pasted, copy_text)
+
+      # The clipboard is single-use, so a second paste adds nothing.
+      editor |> Editor.paste_button() |> Expect.to_be_hidden!()
+      Editor.paste_with_keyboard(editor, part_id)
+      Editor.wait_for_saves(editor)
+      Expect.to_have_count!(text_flows, length(before_ids) + 1)
+
+      editor |> Editor.undo_button() |> Locator.click!()
+      Expect.to_have_count!(pasted, 0)
+      Expect.to_have_count!(text_flows, length(before_ids))
+      editor |> Editor.redo_button() |> Locator.click!()
+      Expect.to_have_count!(pasted, 1)
+
+      AdvancedAuthor.reload_and_open_screen(task, "Copy paste screen")
+      Expect.to_have_count!(pasted, 1)
+      Expect.to_have_count!(text_flows, length(before_ids) + 1)
+    end
+
+    Test.step "responsive layout arranges components side by side" do
       editor = task.editor
 
-      AdvancedAuthor.add_screen(task, screen_title)
-      configure(unquote(component_case), editor)
+      AdvancedAuthor.add_screen(task, "Responsive layout screen")
+      # Responsive widths only take effect once the lesson enables them.
+      Editor.open_tab(editor, "Lesson")
+      Editor.set_checkbox(editor, "Properties_responsiveLayout", true)
+      Editor.open_tab(editor, "Screen")
 
-      AdvancedAuthor.reload_and_open_screen(task, screen_title)
-      verify_persisted(unquote(component_case), editor)
+      left_id = Editor.add_component(editor, :janus_text_flow)
+      Editor.set_text_flow_text(editor, left_id, "Left column text")
+      Editor.set_part_width(editor, left_id, "50% left")
+
+      right_id = Editor.add_component(editor, :janus_image)
+      Editor.select_part(editor, right_id)
+      Editor.set_media_url(editor, "Select Image", Spec.image_url())
+      Editor.set_part_width(editor, right_id, "50% right")
+
+      AdvancedAuthor.reload_and_open_screen(task, "Responsive layout screen")
+
+      editor |> Editor.responsive_item(left_id) |> Expect.to_have_class!(~r/half-width/)
+
+      editor
+      |> Editor.responsive_item(left_id)
+      |> Expect.to_have_class!(~r/responsive-align-left/)
+
+      editor |> Editor.responsive_item(right_id) |> Expect.to_have_class!(~r/half-width/)
+
+      editor
+      |> Editor.responsive_item(right_id)
+      |> Expect.to_have_class!(~r/responsive-align-right/)
     end
-  end
-
-  @tag timeout: 150_000
-  test "copy/paste and undo/redo update the screen", %{advanced_author_task: task} do
-    editor = task.editor
-    text_flows = Editor.parts_of_type(editor, "janus-text-flow")
-    copy_text = "Original text to copy"
-
-    AdvancedAuthor.add_screen(task, "Copy paste screen")
-    part_id = Editor.add_component(editor, :janus_text_flow)
-    Editor.set_text_flow_text(editor, part_id, copy_text)
-    before_ids = Editor.part_ids(editor, "janus-text-flow")
-
-    Editor.select_part(editor, part_id)
-    Editor.copy_selected_part(editor)
-    Editor.paste_with_toolbar(editor)
-
-    Expect.to_have_count!(text_flows, length(before_ids) + 1)
-    after_paste_ids = Editor.part_ids(editor, "janus-text-flow")
-    pasted_id = Enum.find(after_paste_ids, fn id -> id not in before_ids end)
-    if !pasted_id, do: raise("The pasted text flow should be on the stage")
-    pasted = Editor.part(editor, pasted_id)
-    Expect.to_contain_text!(pasted, copy_text)
-
-    # The clipboard is single-use, so a second paste adds nothing.
-    editor |> Editor.paste_button() |> Expect.to_be_hidden!()
-    Editor.paste_with_keyboard(editor, part_id)
-    Editor.wait_for_saves(editor)
-    Expect.to_have_count!(text_flows, length(before_ids) + 1)
-
-    editor |> Editor.undo_button() |> Locator.click!()
-    Expect.to_have_count!(pasted, 0)
-    Expect.to_have_count!(text_flows, length(before_ids))
-    editor |> Editor.redo_button() |> Locator.click!()
-    Expect.to_have_count!(pasted, 1)
-
-    AdvancedAuthor.reload_and_open_screen(task, "Copy paste screen")
-    Expect.to_have_count!(pasted, 1)
-    Expect.to_have_count!(text_flows, length(before_ids) + 1)
-  end
-
-  @tag timeout: 150_000
-  test "responsive layout arranges components side by side", %{advanced_author_task: task} do
-    editor = task.editor
-
-    AdvancedAuthor.add_screen(task, "Responsive layout screen")
-    # Responsive widths only take effect once the lesson enables them.
-    Editor.open_tab(editor, "Lesson")
-    Editor.set_checkbox(editor, "Properties_responsiveLayout", true)
-    Editor.open_tab(editor, "Screen")
-
-    left_id = Editor.add_component(editor, :janus_text_flow)
-    Editor.set_text_flow_text(editor, left_id, "Left column text")
-    Editor.set_part_width(editor, left_id, "50% left")
-
-    right_id = Editor.add_component(editor, :janus_image)
-    Editor.select_part(editor, right_id)
-    Editor.set_media_url(editor, "Select Image", Spec.image_url())
-    Editor.set_part_width(editor, right_id, "50% right")
-
-    AdvancedAuthor.reload_and_open_screen(task, "Responsive layout screen")
-
-    editor |> Editor.responsive_item(left_id) |> Expect.to_have_class!(~r/half-width/)
-    editor |> Editor.responsive_item(left_id) |> Expect.to_have_class!(~r/responsive-align-left/)
-    editor |> Editor.responsive_item(right_id) |> Expect.to_have_class!(~r/half-width/)
-
-    editor
-    |> Editor.responsive_item(right_id)
-    |> Expect.to_have_class!(~r/responsive-align-right/)
   end
 
   # One row per Phase 1 component. Each row authors the component on its own

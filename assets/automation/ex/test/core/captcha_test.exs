@@ -2,11 +2,11 @@ defmodule OliE2E.Core.CaptchaTest do
   # captcha submission boundary @pr
   use OliE2E.Case, async: true
 
+  alias Playwright.{Page, Promise, Request, Route}
+
   @moduletag :pr
   # imports `test` from '@playwright/test', not the my-fixture one
   @moduletag plain: true
-
-  alias Playwright.{Page, Promise, Request, Route}
 
   @origin "http://torus.test"
   @token "fixture-only-captcha-token"

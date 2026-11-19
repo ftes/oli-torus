@@ -2,17 +2,16 @@ defmodule OliE2E.Torus.CourseAuthoring.SimpleAuthorPersistenceTest do
   # Simple Author save diagnostics @pr
   use OliE2E.Case, async: true
 
-  @moduletag :pr
-
   alias OliE2E.Pom.SimpleAuthor
   alias Playwright.{Page, Route}
 
-  @origin "http://simple-author.test"
-  @save_url "#{@origin}/api/v1/project/save-test/resource/1"
-
+  @moduletag :pr
   # These page-object checks intercept browser requests and need no Torus server
   # or seeded data. Replace the shared fixture's automatic site navigation.
   @moduletag site: false
+
+  @origin "http://simple-author.test"
+  @save_url "#{@origin}/api/v1/project/save-test/resource/1"
 
   setup %{page: page} do
     Page.route!(page, "#{@origin}/", fn route ->

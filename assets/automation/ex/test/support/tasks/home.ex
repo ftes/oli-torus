@@ -9,7 +9,7 @@ defmodule OliE2E.Tasks.Home do
   `logout` is not ported (no @pr spec uses it).
   """
 
-  import OliE2E.Helpers, only: [step: 2]
+  require Playwright.Test
 
   alias OliE2E.{Utils, Waiter}
   alias OliE2E.Pom.{Login, Sidebar}
@@ -29,20 +29,20 @@ defmodule OliE2E.Tasks.Home do
   end
 
   def go_to_site(%{page: page} = po, environment \\ nil) do
-    step "Go to site: #{environment}" do
+    Playwright.Test.step "Go to site: #{environment}" do
       Page.goto!(page, environment || po.environment)
     end
   end
 
   def close_site(%{page: page}) do
-    step "Close site" do
+    Playwright.Test.step "Close site" do
       Page.close!(page)
     end
   end
 
   @doc "`role` is `:student`, `:instructor`, `:author` or `:administrator`."
   def login(%{page: page} = po, role) do
-    step "Login as #{role}" do
+    Playwright.Test.step "Login as #{role}" do
       data_user = Map.fetch!(po.login_data, role)
 
       Login.accept_cookies(po.loginpo)
@@ -63,43 +63,43 @@ defmodule OliE2E.Tasks.Home do
   end
 
   def enter_to_curriculum(po) do
-    step "Enter to Curriculum" do
+    Playwright.Test.step "Enter to Curriculum" do
       menu_create(po, "Curriculum")
     end
   end
 
   def enter_to_course_author(po) do
-    step "Enter to Course Author" do
+    Playwright.Test.step "Enter to Course Author" do
       Sidebar.click_in_menu(po.sidebar, "Course Author")
     end
   end
 
   def enter_to_overview(po) do
-    step "Enter to Overview" do
+    Playwright.Test.step "Enter to Overview" do
       Sidebar.click_in_menu(po.sidebar, "Overview")
     end
   end
 
   def enter_to_publish(po) do
-    step "Enter to Publish" do
+    Playwright.Test.step "Enter to Publish" do
       menu_publish(po, "Publish")
     end
   end
 
   def enter_to_learn(po) do
-    step "Enter to Learn" do
+    Playwright.Test.step "Enter to Learn" do
       Sidebar.click_in_menu(po.sidebar, "Learn")
     end
   end
 
   def enter_to_products(po) do
-    step "Enter to Templates" do
+    Playwright.Test.step "Enter to Templates" do
       menu_create(po, "Templates")
     end
   end
 
   def enter_to_bibliography(po) do
-    step "Enter to Bibliography" do
+    Playwright.Test.step "Enter to Bibliography" do
       menu_create(po, "Bibliography")
     end
   end

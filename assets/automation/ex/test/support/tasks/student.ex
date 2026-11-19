@@ -4,7 +4,7 @@ defmodule OliE2E.Tasks.Student do
   `verifyCanCreateSections` needs the instructor/new-course POs and is not used by the @pr specs).
   """
 
-  import OliE2E.Helpers, only: [step: 2]
+  require Playwright.Test
 
   alias OliE2E.Pom.{StudentCourse, StudentDashboard}
 
@@ -17,7 +17,7 @@ defmodule OliE2E.Tasks.Student do
     }
 
   def search_project(po, course_name) do
-    step "Search project \"#{course_name}\"" do
+    Playwright.Test.step "Search project \"#{course_name}\"" do
       StudentDashboard.wait_for_visible_courses(po.student_db)
       StudentDashboard.fill_search_input(po.student_db, course_name)
       StudentDashboard.enter_course(po.student_db, course_name)
@@ -27,7 +27,7 @@ defmodule OliE2E.Tasks.Student do
   end
 
   def validate_resource(po, page_names) do
-    step "Validate resource \"#{Enum.join(page_names, ",")}\"" do
+    Playwright.Test.step "Validate resource \"#{Enum.join(page_names, ",")}\"" do
       StudentCourse.present_view_selector(po.student_course)
 
       for name <- page_names do

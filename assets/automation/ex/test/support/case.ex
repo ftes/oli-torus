@@ -1,13 +1,14 @@
 defmodule OliE2E.Case do
   @moduledoc """
   Port of src/core/fixture/my-fixture.ts: the `context` fixture configures the
-  captcha, the auto `forEachTest` fixture opens the site, `request` is the API
-  request fixture, and `seed_scenario` seeds data from a scenario file next to
-  the spec.
+  captcha, the auto `forEachTest` fixture opens the site, `api_request/1` is the
+  API request fixture (`request`), and `seed_scenario` seeds data from a scenario
+  file next to the spec.
 
   `@moduletag plain: true` skips both fixtures (a spec importing `test` from
-  '@playwright/test'); `@moduletag site: false` skips only the site navigation
-  (a spec replacing `forEachTest`, or one whose tests work on a `setup_all` page).
+  '@playwright/test', or a `describe.serial` whose `beforeAll` makes its own page);
+  `@moduletag site: false` skips only the site navigation (a spec replacing
+  `forEachTest`).
   """
 
   use ExUnit.CaseTemplate
@@ -23,12 +24,14 @@ defmodule OliE2E.Case do
     end
   end
 
+  import ExUnit.Assertions
+
   alias OliE2E.Env
   alias Playwright.{APIRequest, Browser, BrowserContext, Page}
   alias Playwright.Test.BrowserPool
 
   @doc false
-  def fixtures(%{browser: browser, context: context, page: page} = ctx) do
+  def fixtures(%{context: context, page: page} = ctx) do
     base_url = Playwright.Test.info().use[:base_url]
     plain? = Map.get(ctx, :plain, false)
     unless plain?, do: OliE2E.Captcha.configure(context, base_url)
@@ -37,7 +40,7 @@ defmodule OliE2E.Case do
       Page.goto!(page, base_url)
     end
 
-    %{request: api_request(browser), base_url: base_url}
+    %{base_url: base_url}
   end
 
   @doc """
@@ -56,9 +59,34 @@ defmodule OliE2E.Case do
     page
   end
 
-  @doc "The `request` fixture: an API request context (use it in `setup_all` too, and dispose it there)."
+  @doc """
+  The `request` fixture: an API request context. A test's is disposed at its end; in
+  `setup_all`, dispose it there.
+  """
   def api_request(browser) do
     APIRequest.new_context!(Playwright.request(BrowserPool.playwright(browser)))
+  end
+
+  @doc """
+  The `beforeAll` of simple-author.spec.ts and advanced-author.spec.ts: seeds the
+  spec's scenario with `RUN_ID` and returns the section slug of `project_title`,
+  checking its project slug too (`name` is the suite's name in the messages).
+  """
+  def seed_authoring_scenario(browser, spec_dir, scenario, run_id, project_title, name) do
+    request = api_request(browser)
+
+    try do
+      result = seed_scenario(request, spec_dir, scenario, %{"RUN_ID" => run_id})
+      outputs = result["outputs"]
+      project_slug = get_in(outputs, ["projects", project_title]) || ""
+      section_slug = get_in(outputs, ["sections", project_title]) || ""
+
+      assert project_slug != "", "Scenario did not return the #{name} project slug"
+      assert section_slug != "", "Scenario did not return the #{name} section slug"
+      section_slug
+    after
+      Playwright.APIRequestContext.dispose(request)
+    end
   end
 
   @doc """

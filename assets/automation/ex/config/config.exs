@@ -1,15 +1,17 @@
 import Config
 
+# An unset or empty variable is false, as JS's `Boolean(process.env.X)`.
+set? = fn name -> System.get_env(name) not in [nil, ""] end
+
 # Runtime credentials and account links must never enter traces or screenshots
 # (playwright.config.ts: `protectSecrets`).
 protect_secrets? =
-  System.get_env("CI") != nil or System.get_env("PLAYWRIGHT_SCENARIO_TOKEN") != nil or
-    System.get_env("PLAYWRIGHT_CAPTCHA_TOKEN") != nil
+  set?.("CI") or set?.("PLAYWRIGHT_SCENARIO_TOKEN") or set?.("PLAYWRIGHT_CAPTCHA_TOKEN")
 
 # playwright.config.ts, with its one project ('Google Chrome') folded in.
 config :playwright, :test,
-  # The PR job's `--workers=2`.
-  workers: 2,
+  # playwright.config.ts's `workers: 1`, and the PR job's `--workers=2` on CI.
+  workers: if(set?.("CI"), do: 2, else: 1),
   launch_options: [
     channel: "chrome",
     args: ["--start-maximized", "--ignore-certificate-errors", "--window-size=1920,1080"]

@@ -6,7 +6,7 @@ defmodule OliE2E.Tasks.Curriculum do
   `index` is `:first`, `:last` or an integer.
   """
 
-  import OliE2E.Helpers, only: [step: 2]
+  require Playwright.Test
 
   alias OliE2E.Pom.{BasicPracticePage, Curriculum}
   alias Playwright.Page
@@ -22,7 +22,7 @@ defmodule OliE2E.Tasks.Curriculum do
   end
 
   def add_page_and_enter(po, type, name_page \\ "New Page", link \\ "Edit Page", index \\ :last) do
-    step "Add a page and enter. Type: #{type}" do
+    Playwright.Test.step "Add a page and enter. Type: #{type}" do
       add_page(po, type, true)
       enter_page(po, type, name_page, link, index)
 
@@ -33,7 +33,7 @@ defmodule OliE2E.Tasks.Curriculum do
   end
 
   def add_page(po, type, stay_in_editor \\ false) do
-    step "Add a page to the project. Type: #{type}" do
+    Playwright.Test.step "Add a page to the project. Type: #{type}" do
       opened_editor =
         case type do
           "basic-practice" ->
@@ -58,7 +58,7 @@ defmodule OliE2E.Tasks.Curriculum do
   end
 
   def add_page_with_title(po, type, title_page) do
-    step "Add a page to the project. Type: #{type}, Title: #{title_page}" do
+    Playwright.Test.step "Add a page to the project. Type: #{type}, Title: #{title_page}" do
       add_page(po, type, true)
       enter_page(po, type, default_page_name(type), "Edit Page", :last)
       BasicPracticePage.rename_title(po.basic_pp, title_page)
@@ -68,7 +68,7 @@ defmodule OliE2E.Tasks.Curriculum do
   end
 
   def create_adaptive_page_in_advanced_author(po, stay_in_editor \\ false, lesson_title \\ nil) do
-    step "Create an adaptive page in Advanced Author" do
+    Playwright.Test.step "Create an adaptive page in Advanced Author" do
       opened_editor = add_page(po, "adaptive-practice", true)
 
       unless opened_editor do
@@ -93,7 +93,7 @@ defmodule OliE2E.Tasks.Curriculum do
   end
 
   def create_adaptive_page_in_simple_author(po, stay_in_editor \\ false, lesson_title \\ nil) do
-    step "Create an adaptive page in Simple Author" do
+    Playwright.Test.step "Create an adaptive page in Simple Author" do
       opened_editor = add_page(po, "adaptive-simple-practice", true)
 
       unless opened_editor do
@@ -125,7 +125,7 @@ defmodule OliE2E.Tasks.Curriculum do
              "adaptive-practice",
              "adaptive-simple-practice"
            ] do
-    step "Enter a page from the project. Type: #{type}" do
+    Playwright.Test.step "Enter a page from the project. Type: #{type}" do
       unless Curriculum.page_editor_is_open(po.curriculum, 500) do
         Curriculum.click_edit_page_link(po.curriculum, name_page, link, index)
       end

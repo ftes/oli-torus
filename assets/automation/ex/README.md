@@ -28,8 +28,11 @@ its traces and screenshots to `test-results/` (both off in CI and when a token i
 
 - A `test.describe` is a module using `OliE2E.Case`, tagged `@moduletag :pr` when its title
   has `@pr`.
-- A `test.describe.serial` whose tests depend on each other is one test with a
-  `Playwright.Test.step` per JS test, getting each step's page from `OliE2E.Case.next_page/2`.
-  ExUnit has no serial mode, and `mix test --failed` reruns a test with a fresh `setup_all`.
-- `beforeAll` is `setup_all`, `test.setTimeout` is `@tag timeout:`, and the `@step` decorator is
-  `Playwright.Test.step`.
+- A `test.describe.serial` is one test with a `Playwright.Test.step` per JS test, so its tests
+  run in order and stop at the first failure. A step that needs a fresh page, as each JS test
+  gets, takes it from `OliE2E.Case.next_page/2`. ExUnit has no serial mode, and
+  `mix test --failed` reruns a test with a fresh `setup_all`, so the group reruns as a whole, as
+  a JS retry does.
+- `beforeAll` is `setup_all`, except a `describe.serial`'s page, which the start of its test sets
+  up on the test's page (`@moduletag plain: true`). `test.setTimeout` is `@tag timeout:`, and the
+  `@step` decorator is `Playwright.Test.step`.

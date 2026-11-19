@@ -10,8 +10,7 @@ defmodule OliE2E.AdvancedAuthorSpec do
   import ExUnit.Assertions
 
   alias OliE2E.Pom.{AdaptiveDeck, StudentCourse}
-  alias Playwright.{APIRequest, Expect, Locator, Page, Promise, Request, Response}
-  alias Playwright.Test.BrowserPool
+  alias Playwright.{Expect, Locator, Page, Promise, Request, Response}
 
   @default_password "changeme123456"
 
@@ -56,31 +55,16 @@ defmodule OliE2E.AdvancedAuthorSpec do
     }
   end
 
-  @doc """
-  `test.beforeAll` seeding. Returns the section slug (the project slug is
-  checked too, as in the JS).
-  """
+  @doc "`test.beforeAll` seeding: returns the section slug."
   def seed(browser, spec_dir, run_id) do
-    playwright = BrowserPool.playwright(browser)
-    request = APIRequest.new_context!(Playwright.request(playwright))
-
-    try do
-      result =
-        OliE2E.Case.seed_scenario(request, spec_dir, "./playwright_advanced_author.yaml", %{
-          "RUN_ID" => run_id
-        })
-
-      outputs = result["outputs"]
-      title = project_title(run_id)
-      project_slug = get_in(outputs, ["projects", title]) || ""
-      section_slug = get_in(outputs, ["sections", title]) || ""
-
-      assert project_slug != "", "Scenario did not return the Advanced Author project slug"
-      assert section_slug != "", "Scenario did not return the Advanced Author section slug"
-      section_slug
-    after
-      Playwright.APIRequestContext.dispose(request)
-    end
+    OliE2E.Case.seed_authoring_scenario(
+      browser,
+      spec_dir,
+      "./playwright_advanced_author.yaml",
+      run_id,
+      project_title(run_id),
+      "Advanced Author"
+    )
   end
 
   def open_published_lesson(page, section_slug, title) do

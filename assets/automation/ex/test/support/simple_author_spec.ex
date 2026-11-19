@@ -6,8 +6,6 @@ defmodule OliE2E.SimpleAuthorSpec do
   block, each seeding its own copy with its own run id (see `seed/3`).
   """
 
-  import ExUnit.Assertions
-
   @default_password "changeme123456"
 
   def run_id, do: OliE2E.Helpers.run_id()
@@ -43,32 +41,20 @@ defmodule OliE2E.SimpleAuthorSpec do
   end
 
   @doc """
-  `test.beforeAll` seeding. Returns the section slug (the project slug is
-  checked too, as in the JS).
+  `test.beforeAll` seeding: returns the section slug.
 
   The PR job runs against an ephemeral database, so the JS `afterAll` teardown only
   runs when an automation API key is available (local runs and persistent
   deployments): not ported.
   """
   def seed(browser, spec_dir, run_id) do
-    request = OliE2E.Case.api_request(browser)
-
-    try do
-      result =
-        OliE2E.Case.seed_scenario(request, spec_dir, "./playwright_simple_author.yaml", %{
-          "RUN_ID" => run_id
-        })
-
-      outputs = result["outputs"]
-      title = project_title(run_id)
-      project_slug = get_in(outputs, ["projects", title]) || ""
-      section_slug = get_in(outputs, ["sections", title]) || ""
-
-      assert project_slug != "", "Scenario did not return the Simple Author project slug"
-      assert section_slug != "", "Scenario did not return the Simple Author section slug"
-      section_slug
-    after
-      Playwright.APIRequestContext.dispose(request)
-    end
+    OliE2E.Case.seed_authoring_scenario(
+      browser,
+      spec_dir,
+      "./playwright_simple_author.yaml",
+      run_id,
+      project_title(run_id),
+      "Simple Author"
+    )
   end
 end

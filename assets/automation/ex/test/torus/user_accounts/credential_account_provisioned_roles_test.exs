@@ -2,15 +2,17 @@ defmodule OliE2E.Torus.UserAccounts.CredentialAccountProvisionedRolesTest do
   # credential-based account flows - provisioned roles @pr
   use OliE2E.Case, async: true
 
-  @moduletag :pr
-
   alias OliE2E.Mailbox
   alias OliE2E.Pom.CredentialAccount
 
+  @moduletag :pr
   @moduletag timeout: 120_000
 
   @scenario_path "playwright_credential_roles.yaml"
   @seeded_password "changeme123456"
+
+  # The `request` fixture.
+  setup %{browser: browser}, do: %{request: api_request(browser)}
 
   test "system admin author credential lifecycle", %{
     context: context,

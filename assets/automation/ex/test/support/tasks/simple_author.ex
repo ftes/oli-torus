@@ -6,7 +6,7 @@ defmodule OliE2E.Tasks.SimpleAuthor do
   editor interactions and assertions live on `editor` (OliE2E.Pom.SimpleAuthor).
   """
 
-  import OliE2E.Helpers, only: [step: 2]
+  require Playwright.Test
 
   alias OliE2E.Pom.SimpleAuthor, as: Editor
   alias OliE2E.Tasks.{Curriculum, Home, Project}
@@ -24,7 +24,7 @@ defmodule OliE2E.Tasks.SimpleAuthor do
 
   # Creates a Simple Author lesson in the project and leaves its editor open.
   def create_lesson(task, project_title, lesson_title) do
-    step "Create Simple Author lesson \"#{lesson_title}\" in project \"#{project_title}\"" do
+    Playwright.Test.step "Create Simple Author lesson \"#{lesson_title}\" in project \"#{project_title}\"" do
       Project.search_and_enter_project(task.project_task, project_title)
       Home.enter_to_curriculum(task.home_task)
       Curriculum.create_adaptive_page_in_simple_author(task.curriculum_task, true, lesson_title)
@@ -34,14 +34,14 @@ defmodule OliE2E.Tasks.SimpleAuthor do
   end
 
   def add_screen(task, title, type) do
-    step "Add \"#{type}\" screen \"#{title}\"" do
+    Playwright.Test.step "Add \"#{type}\" screen \"#{title}\"" do
       Editor.add_screen(task.editor, title, type)
     end
   end
 
   # Reloads the editor once every write settled and reopens the given screen.
   def reload_and_open_screen(task, title) do
-    step "Reload the editor and reopen screen \"#{title}\"" do
+    Playwright.Test.step "Reload the editor and reopen screen \"#{title}\"" do
       Editor.reload_editor(task.editor)
       Editor.switch_to_screen_panel(task.editor)
       Editor.select_screen(task.editor, title)
@@ -49,7 +49,7 @@ defmodule OliE2E.Tasks.SimpleAuthor do
   end
 
   def publish(task) do
-    step "Publish the project" do
+    Playwright.Test.step "Publish the project" do
       Editor.wait_for_saves(task.editor)
       Home.enter_to_publish(task.home_task)
       Project.publish_project(task.project_task)
