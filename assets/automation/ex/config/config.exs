@@ -1,6 +1,6 @@
 import Config
 
-# An unset or empty variable is false, as JS's `Boolean(process.env.X)`.
+# An unset or empty variable is false, as JS's `Boolean(process.env.X)` and `||`.
 set? = fn name -> System.get_env(name) not in [nil, ""] end
 
 # Runtime credentials and account links must never enter traces or screenshots
@@ -16,7 +16,11 @@ config :playwright, :test,
     channel: "chrome",
     args: ["--start-maximized", "--ignore-certificate-errors", "--window-size=1920,1080"]
   ],
-  base_url: System.get_env("PLAYWRIGHT_BASE_URL", "http://localhost"),
+  base_url:
+    if(set?.("PLAYWRIGHT_BASE_URL"),
+      do: System.get_env("PLAYWRIGHT_BASE_URL"),
+      else: "http://localhost"
+    ),
   ignore_https_errors: true,
   viewport: %{width: 1920, height: 1080},
   action_timeout: 15_000,
