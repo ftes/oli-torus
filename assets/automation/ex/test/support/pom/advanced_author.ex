@@ -24,7 +24,7 @@ defmodule OliE2E.Pom.AdvancedAuthor do
   `page.on(...)` listeners; here they live in an Agent (`saves`).
   """
 
-  import ExUnit.Assertions
+  import Playwright.Test.Assertions
 
   alias OliE2E.Pom.BasicPracticePage
   alias Playwright.{Expect, Keyboard, Locator, Page, Request}

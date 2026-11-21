@@ -211,15 +211,20 @@ jobs:
 
       # Modules run in parallel across 2 workers (config/config.exs); tests
       # within a module stay serial. Failed tests are rerun once, as
-      # playwright.config.ts's retries: 1 (exit status 2 means tests failed).
+      # playwright.config.ts's retries: 1 (exit status 2 means tests failed),
+      # each run with GitHub annotations (a test passing on the rerun counts
+      # as flaky).
       - name: Run the @pr ExUnit tests
         working-directory: assets/automation/ex
         env:
           MIX_ENV: test
-        run: mix test --only pr || { [ $? -eq 2 ] && mix test --only pr --failed; }
+        run: |
+          f="--formatter ExUnit.CLIFormatter --formatter Playwright.Test.GitHubFormatter"
+          mix test --only pr $f || { [ $? -eq 2 ] && mix test --only pr --failed $f; }
 
+      # Also when the rerun passed, to keep the failed run's files.
       - name: Upload Playwright test results
-        if: failure()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: pr-playwright-ex-test-results

@@ -1,7 +1,7 @@
 defmodule OliE2E.Verifier do
   @moduledoc "Port of src/core/verify/Verifier.ts."
 
-  import ExUnit.Assertions
+  import Playwright.Test.Assertions
 
   alias Playwright.Expect
 

@@ -14,6 +14,8 @@ defmodule OliE2E.Case do
   use ExUnit.CaseTemplate
 
   using opts do
+    opts = Keyword.put_new(opts, :parameterize, quote(do: OliE2E.Case.projects()))
+
     quote do
       use Playwright.Case, unquote(opts)
 
@@ -24,11 +26,24 @@ defmodule OliE2E.Case do
     end
   end
 
-  import ExUnit.Assertions
+  # In place of the ExUnit.Assertions that ExUnit.CaseTemplate imports: asserts as steps.
+  import ExUnit.Assertions, only: []
+  import Playwright.Test.Assertions
 
   alias OliE2E.Env
   alias Playwright.{APIRequest, Browser, BrowserContext, Page}
   alias Playwright.Test.BrowserPool
+
+  @doc "playwright.config.ts's projects, as `parameterize:` takes them."
+  def projects do
+    [
+      Playwright.Test.parameters(
+        name: "Google Chrome",
+        channel: "chrome",
+        viewport: %{width: 1920, height: 1080}
+      )
+    ]
+  end
 
   @doc false
   def fixtures(%{context: context, page: page} = ctx) do

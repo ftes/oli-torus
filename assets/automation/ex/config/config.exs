@@ -8,12 +8,11 @@ set? = fn name -> System.get_env(name) not in [nil, ""] end
 protect_secrets? =
   set?.("CI") or set?.("PLAYWRIGHT_SCENARIO_TOKEN") or set?.("PLAYWRIGHT_CAPTCHA_TOKEN")
 
-# playwright.config.ts, with its one project ('Google Chrome') folded in.
+# playwright.config.ts; its one project ('Google Chrome') is OliE2E.Case.projects/0.
 config :playwright, :test,
   # playwright.config.ts's `workers: 1`, and the PR job's `--workers=2` on CI.
   workers: if(set?.("CI"), do: 2, else: 1),
   launch_options: [
-    channel: "chrome",
     args: ["--start-maximized", "--ignore-certificate-errors", "--window-size=1920,1080"]
   ],
   base_url:
@@ -22,7 +21,6 @@ config :playwright, :test,
       else: "http://localhost"
     ),
   ignore_https_errors: true,
-  viewport: %{width: 1920, height: 1080},
   action_timeout: 15_000,
   trace: if(protect_secrets?, do: :off, else: :on),
   screenshot: if(protect_secrets?, do: :off, else: :on)

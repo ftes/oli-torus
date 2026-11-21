@@ -1,7 +1,7 @@
 defmodule OliE2E.Accessibility do
   @moduledoc "Port of src/core/accessibility.ts."
 
-  import ExUnit.Assertions
+  import Playwright.Test.Assertions
 
   alias OliE2E.AxeBuilder
   alias Playwright.{Expect, Locator, Page}

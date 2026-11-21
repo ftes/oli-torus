@@ -7,7 +7,7 @@ defmodule OliE2E.AdvancedAuthorSpec do
   its own copy with its own run id (see `seed/2`).
   """
 
-  import ExUnit.Assertions
+  import Playwright.Test.Assertions
 
   alias OliE2E.Pom.{AdaptiveDeck, StudentCourse}
   alias Playwright.{Expect, Locator, Page, Promise, Request, Response}

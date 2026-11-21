@@ -248,8 +248,14 @@ defmodule OliE2E.Torus.CourseAuthoring.SimpleAuthorDeliveryTest do
   defp expect_side_by_side(left, right) do
     Expect.poll!(
       fn ->
-        a = Locator.bounding_box!(left)
-        b = Locator.bounding_box!(right)
+        [a, b] =
+          [
+            Playwright.Promise.async(fn -> Locator.bounding_box!(left) end),
+            Playwright.Promise.async(fn -> Locator.bounding_box!(right) end)
+          ]
+          |> Playwright.Promise.all()
+          |> Playwright.Promise.await!()
+
         a != nil and b != nil and abs(a.y - b.y) < 2 and a.x + a.width <= b.x + 1
       end,
       &assert(&1 == true)
@@ -260,8 +266,13 @@ defmodule OliE2E.Torus.CourseAuthoring.SimpleAuthorDeliveryTest do
   defp expect_stacked(first, second) do
     Expect.poll!(
       fn ->
-        a = Locator.bounding_box!(first)
-        b = Locator.bounding_box!(second)
+        [a, b] =
+          [
+            Playwright.Promise.async(fn -> Locator.bounding_box!(first) end),
+            Playwright.Promise.async(fn -> Locator.bounding_box!(second) end)
+          ]
+          |> Playwright.Promise.all()
+          |> Playwright.Promise.await!()
 
         if a == nil or b == nil do
           false
